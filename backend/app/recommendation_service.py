@@ -120,9 +120,11 @@ class RecommendationAdapter:
             shap_available = True
             summary_parts = []
             for contributor in top_contributors:
-                direction = "high" if float(contributor["impact"]) > 0 else "low"
-                summary_parts.append(f"{contributor['feature']} is {direction} ({contributor['value']})")
-            shap_summary = f"Recommended for {pred_label} primarily because {' and '.join(summary_parts)}."
+                direction = "positive" if float(contributor["impact"]) > 0 else "negative"
+                summary_parts.append(
+                    f"{contributor['feature']}={contributor['value']} had a {direction} SHAP contribution"
+                )
+            shap_summary = f"Recommended for {pred_label}; the largest SHAP contributions were {' and '.join(summary_parts)}."
         except Exception:
             shap_available = False
             shap_summary = "SHAP was available in the model artifact but could not be generated for this request."

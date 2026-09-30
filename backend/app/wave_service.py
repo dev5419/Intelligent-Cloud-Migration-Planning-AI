@@ -1,11 +1,18 @@
 from __future__ import annotations
 
-from collections import defaultdict
+import sys
+from pathlib import Path
 
 from fastapi import HTTPException, status
 
 from .data_loader import get_applications
-from .models import MigrationWave, MigrationWavesResponse
+from .models import MigrationWavesResponse
+
+WAVE_PLANNER_DIR = Path(__file__).resolve().parents[2] / "Wave_Planner"
+if str(WAVE_PLANNER_DIR) not in sys.path:
+    sys.path.insert(0, str(WAVE_PLANNER_DIR))
+
+from wave_planner import from_objects, plan_waves
 
 
 def get_migration_waves(application_ids: list[str] | None) -> MigrationWavesResponse:
@@ -30,33 +37,14 @@ def get_migration_waves(application_ids: list[str] | None) -> MigrationWavesResp
             detail=f"Applications not found: {unknown_ids}",
         )
 
-    app_map = {application.id: application for application in applications}
-    dependency_map: dict[str, list[str]] = {app_id: [] for app_id in selected_ids}
-    for app_id in selected_ids:
-        app = app_map[app_id]
-        dependency_map[app_id] = [dep for dep in app.dependencies if dep in selected_ids]
+    selected_applications = [application for application in applications if application.id in selected_ids]
+    try:
+        plan = plan_waves(from_objects(selected_applications))
+        response = plan.to_dict()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Migration wave planning failed: {exc}",
+        ) from exc
 
-    wave_applications: dict[int, list[str]] = defaultdict(list)
-    seen: set[str] = set()
-    wave_number = 1
-    remaining = set(selected_ids)
-
-    while remaining:
-        ready = sorted(app_id for app_id in remaining if all(dep in seen for dep in dependency_map[app_id]))
-        if not ready:
-            ready = sorted(remaining)
-        wave_applications[wave_number] = ready
-        seen.update(ready)
-        remaining -= set(ready)
-        wave_number += 1
-
-    waves: list[MigrationWave] = []
-    for index, app_ids in sorted(wave_applications.items(), key=lambda item: item[0]):
-        risk = "Low"
-        if len(app_ids) > 3:
-            risk = "Medium"
-        if any(app_map[app_id].criticality == "High" for app_id in app_ids):
-            risk = "High"
-        waves.append(MigrationWave(wave=index, applications=app_ids, risk=risk))
-
-    return MigrationWavesResponse(waves=waves)
+    return MigrationWavesResponse(**response)

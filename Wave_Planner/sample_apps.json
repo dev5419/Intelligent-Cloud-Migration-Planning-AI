@@ -1,0 +1,8 @@
+{
+  "applications": [
+    {"id": "app-001", "name": "Customer Portal", "criticality": "High", "dependencies": ["app-002"]},
+    {"id": "app-002", "name": "Identity Service", "criticality": "High", "dependencies": []},
+    {"id": "app-003", "name": "Reporting Dashboard", "criticality": "Medium", "dependencies": ["app-001"]},
+    {"id": "app-004", "name": "Legacy Batch Processor", "criticality": "Low", "dependencies": []}
+  ]
+}

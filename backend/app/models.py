@@ -82,10 +82,18 @@ class MigrationWave(BaseModel):
     wave: int = Field(ge=1)
     applications: list[str]
     risk: Literal["Low", "Medium", "High"]
+    risk_score: float = 0
+    application_count: int = 0
+    unmet_dependencies: int = 0
+    depends_on_waves: list[int] = Field(default_factory=list)
+    cycle_break: bool = False
+    clusters: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class MigrationWavesResponse(BaseModel):
     waves: list[MigrationWave]
+    summary: dict[str, Any] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
 
 
 class CopilotRequest(BaseModel):

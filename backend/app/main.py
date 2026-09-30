@@ -79,7 +79,13 @@ def applications() -> list[Application]:
 
 @app.get("/applications/{app_id}", response_model=Application)
 def application_by_id(app_id: str) -> Application:
-    return get_application(app_id)
+    try:
+        return get_application(app_id)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Application not found: {app_id}",
+        ) from exc
 
 
 @app.post("/recommendation", response_model=RecommendationResponse)
