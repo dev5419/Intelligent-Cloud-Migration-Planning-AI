@@ -1,0 +1,9 @@
+SOURCE: demo_migration_knowledge.pdf
+DAY 1 DEMO DOCUMENT — REPLACE WITH OFFICIAL AWS DOCUMENTATION This file is only a local test document so the student can verify that the PDF -> text -> chunks -> embeddings -> FAISS pipeline works. Cloud migration planning considers migration strategy, application dependencies, business criticality, compliance, technical condition, cost, and risk. A migration strategy can include rehost, replatform, refactor, repurchase, retire, or retain. A recommendation should be supported by the application
+---CHUNK---
+SOURCE: demo_migration_knowledge.pdf
+m, refactor, repurchase, retire, or retain. A recommendation should be supported by the application characteristics and the reason for the recommendation. A migration assistant can retrieve relevant documentation and project results before asking a language model to generate a grounded answer. IMPORTANT: This is a DEMO document, not an official AWS source. Before the final project demo, replace it with official/public migration documentation approved by your team.
+---CHUNK---
+SOURCE: demo_migration_knowledge.pdf
+with official/public migration documentation approved by your team.
+---CHUNK---

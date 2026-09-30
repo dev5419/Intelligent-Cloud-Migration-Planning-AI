@@ -1,67 +1,38 @@
-from fastapi import HTTPException, status
+from __future__ import annotations
 
-from .data import MOCK_APPLICATIONS, MOCK_COSTS, MOCK_RECOMMENDATIONS
+from .data_loader import get_application_by_id, get_applications as load_applications
 from .models import (
+    Application,
     CopilotResponse,
     CostRiskResponse,
     MigrationWavesResponse,
     RecommendationResponse,
 )
+from .copilot_service import answer_copilot as _answer_copilot
+from .cost_service import get_cost_risk as _get_cost_risk
+from .recommendation_service import get_recommendation as _get_recommendation
+from .wave_service import get_migration_waves as _get_migration_waves
 
 
-def _application_ids() -> set[str]:
-    return {application.id for application in MOCK_APPLICATIONS}
+def get_applications() -> list[Application]:
+    return load_applications()
 
 
-def get_applications():
-    return MOCK_APPLICATIONS
+def get_application(application_id: str) -> Application:
+    return get_application_by_id(application_id)
 
 
 def get_recommendation(application_id: str) -> RecommendationResponse:
-    if application_id not in _application_ids():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    recommendation, confidence, explanation = MOCK_RECOMMENDATIONS[application_id]
-    return RecommendationResponse(
-        application_id=application_id,
-        recommendation=recommendation,
-        confidence=confidence,
-        explanation=explanation,
-    )
+    return _get_recommendation(application_id)
 
 
 def get_migration_waves(application_ids: list[str] | None) -> MigrationWavesResponse:
-    selected_ids = application_ids or list(_application_ids())
-    unknown_ids = set(selected_ids) - _application_ids()
-    if unknown_ids:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Applications not found: {sorted(unknown_ids)}",
-        )
-
-    selected = set(selected_ids)
-    waves = [
-        {"wave": 1, "applications": ["app-002"] if "app-002" in selected else [], "risk": "Low"},
-        {"wave": 2, "applications": ["app-001", "app-004"] if selected else [], "risk": "Medium"},
-        {"wave": 3, "applications": ["app-003"] if "app-003" in selected else [], "risk": "High"},
-    ]
-    return MigrationWavesResponse(waves=[wave for wave in waves if wave["applications"]])
+    return _get_migration_waves(application_ids)
 
 
 def answer_copilot(question: str) -> CopilotResponse:
-    return CopilotResponse(
-        question=question,
-        answer="Start with low-risk, loosely coupled applications, then migrate dependent and business-critical services in later waves.",
-        sources=["AWS Migration Strategies", "Mock Migration Runbook"],
-    )
+    return _answer_copilot(question)
 
 
 def get_cost_risk(application_id: str) -> CostRiskResponse:
-    if application_id not in _application_ids():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    monthly_cost, lower, upper, risk_score = MOCK_COSTS[application_id]
-    return CostRiskResponse(
-        application_id=application_id,
-        monthly_aws_cost=monthly_cost,
-        cost_range={"lower": lower, "upper": upper},
-        risk_score=risk_score,
-    )
+    return _get_cost_risk(application_id)
