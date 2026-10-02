@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
-import { apiUrl } from './api'
+import {
+  apiUrl,
+  mapWithConcurrency,
+  COST_RISK_REQUEST_CONCURRENCY,
+  RECOMMENDATION_REQUEST_CONCURRENCY,
+} from './api'
 import MigrationWaves from './pages/MigrationWaves'
 import './App.css'
 import CostRisk from './pages/CostRisk'
@@ -40,8 +45,10 @@ function App() {
         const analyzedApplications = applications.slice(0, DASHBOARD_SAMPLE_SIZE)
 
         // Keep dashboard analysis bounded; the detailed pages are paginated.
-        const recommendations = await Promise.all(
-          analyzedApplications.map(async (app) => {
+        const recommendations = await mapWithConcurrency(
+          analyzedApplications,
+          RECOMMENDATION_REQUEST_CONCURRENCY,
+          async (app) => {
             const response = await fetch(
               apiUrl('/recommendation'),
               {
@@ -62,7 +69,7 @@ function App() {
             }
 
             return response.json()
-          })
+          }
         )
 
         // Count applications ready to migrate
@@ -108,8 +115,10 @@ function App() {
         setMigrationWaves(wavesData.waves)
 
         // Get cost and risk for the dashboard sample
-        const costRisks = await Promise.all(
-          analyzedApplications.map(async (app) => {
+        const costRisks = await mapWithConcurrency(
+          analyzedApplications,
+          COST_RISK_REQUEST_CONCURRENCY,
+          async (app) => {
             const response = await fetch(
               apiUrl('/cost-risk'),
               {
@@ -130,7 +139,7 @@ function App() {
             }
 
             return response.json()
-          })
+          }
         )
 
         // Count high-risk applications

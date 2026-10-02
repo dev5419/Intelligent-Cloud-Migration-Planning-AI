@@ -217,3 +217,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project-generated local artifacts
+Cost and Risk/cache/
+frontend/response.json
+frontend/applications-test.json
+aws-lambda/**/build/
+aws-lambda/**/*.zip
+.aws-sam/

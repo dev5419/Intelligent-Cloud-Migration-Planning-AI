@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -13,7 +14,7 @@ if str(COST_MODULE_DIR) not in sys.path:
     sys.path.insert(0, str(COST_MODULE_DIR))
 
 try:
-    from cost import analyze_application
+    from cost import PricingResolver, analyze_application
 except ModuleNotFoundError as exc:  # pragma: no cover - handled at runtime
     analyze_application = None
     import_error = exc
@@ -84,7 +85,8 @@ def get_cost_risk(application_id: str) -> CostRiskResponse:
 
     try:
         app_data = _build_cost_input(application)
-        result = analyze_application(app_data, iterations=2000)
+        resolver = PricingResolver(region=os.getenv("AWS_REGION", "us-east-1"))
+        result = analyze_application(app_data, resolver=resolver, iterations=2000)
         cost_block = result["cost_simulation_monthly"]
         risk_block = result["risk_assessment"]
     except Exception as exc:  # pragma: no cover - surfaced via HTTP error

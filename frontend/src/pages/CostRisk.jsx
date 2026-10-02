@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { apiUrl } from '../api'
+import {
+  apiUrl,
+  mapWithConcurrency,
+  COST_RISK_REQUEST_CONCURRENCY,
+} from '../api'
 
 const PAGE_SIZE = 20
 
@@ -26,8 +30,10 @@ function CostRisk() {
         setApplications(apps)
 
         // Get cost and risk for each application
-        const results = await Promise.all(
-          apps.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map(async (app) => {
+        const results = await mapWithConcurrency(
+          apps.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE),
+          COST_RISK_REQUEST_CONCURRENCY,
+          async (app) => {
             const response = await fetch(
               apiUrl('/cost-risk'),
               {
@@ -47,7 +53,7 @@ function CostRisk() {
             }
 
             return response.json()
-          })
+          }
         )
 
         setCostRisks(results)

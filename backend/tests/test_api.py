@@ -92,15 +92,178 @@ def test_copilot_uses_retrieved_context(monkeypatch) -> None:
         copilot_service,
         "_get_pipeline",
         lambda: (
-            lambda question, top_k: [{"text": "SOURCE: migration-guide.pdf\nRetrieved evidence."}],
+            lambda question, top_k: [{"text": "SOURCE: demo_migration_knowledge.pdf\nRetrieved evidence."}],
             lambda question, docs: "Answer grounded in retrieved evidence.",
         ),
     )
-    response = client.post("/copilot", json={"question": "How do I sequence a migration?"})
+    response = client.post("/copilot", json={"question": "What is rehosting?"})
     assert response.status_code == 200
     payload = response.json()
+    assert set(payload) == {"question", "answer", "sources"}
     assert payload["answer"] == "Answer grounded in retrieved evidence."
-    assert payload["sources"] == ["migration-guide.pdf"]
+    assert payload["sources"] == ["demo_migration_knowledge.pdf"]
+
+
+def _mock_copilot_core_api(monkeypatch, responses):
+    from app import copilot_service
+
+    calls = []
+
+    def request(method, path, payload=None):
+        calls.append((method, path, payload))
+        result = responses[(method, path)]
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    monkeypatch.setattr(copilot_service, "_request_core_api", request)
+    return calls
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What is the recommendation for APP001?",
+        "What should APP001 use for migration?",
+    ],
+)
+def test_copilot_uses_live_recommendation(monkeypatch, question: str) -> None:
+    from app import copilot_service
+
+    calls = _mock_copilot_core_api(
+        monkeypatch,
+        {
+            ("GET", "/applications"): [{"id": "APP001", "application_id": "APP001"}],
+            ("POST", "/recommendation"): {"recommendation": "Rehost", "confidence": 0.82},
+        },
+    )
+    response = client.post("/copilot", json={"question": question})
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert set(payload) == {"question", "answer", "sources"}
+    assert "Rehost" in payload["answer"]
+    assert "82%" in payload["answer"]
+    assert payload["sources"] == ["/applications", "/recommendation"]
+    assert calls[-1] == ("POST", "/recommendation", {"application_id": "APP001"})
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What is the estimated cost of APP001?",
+        "What is the risk for APP001?",
+    ],
+)
+def test_copilot_uses_live_cost_risk(monkeypatch, question: str) -> None:
+    _mock_copilot_core_api(
+        monkeypatch,
+        {
+            ("GET", "/applications"): [{"id": "APP001", "application_id": "APP001"}],
+            ("POST", "/cost-risk"): {
+                "monthly_aws_cost": 100.0,
+                "cost_range": {"lower": 80.0, "upper": 120.0},
+                "risk_score": 45.0,
+            },
+        },
+    )
+    response = client.post("/copilot", json={"question": question})
+
+    assert response.status_code == 200
+    assert "$100.00" in response.json()["answer"]
+    assert "$80.00 to $120.00" in response.json()["answer"]
+    assert "45.0/100" in response.json()["answer"]
+    assert response.json()["sources"] == ["/applications", "/cost-risk"]
+
+
+def test_copilot_uses_live_direct_dependencies(monkeypatch) -> None:
+    _mock_copilot_core_api(
+        monkeypatch,
+        {
+            ("GET", "/applications"): [
+                {"id": "APP001", "application_id": "APP001", "dependencies": ["APP089", "APP635"]}
+            ],
+        },
+    )
+    response = client.post("/copilot", json={"question": "What are APP001's dependencies?"})
+
+    assert response.status_code == 200
+    assert "APP089, APP635" in response.json()["answer"]
+    assert response.json()["sources"] == ["/applications"]
+
+
+def test_copilot_uses_live_reverse_dependencies(monkeypatch) -> None:
+    _mock_copilot_core_api(
+        monkeypatch,
+        {
+            ("GET", "/applications"): [
+                {"id": "APP001", "application_id": "APP001", "dependencies": []},
+                {"id": "APP002", "application_id": "APP002", "dependencies": ["APP001"]},
+                {"id": "APP003", "application_id": "APP003", "dependencies": []},
+            ],
+        },
+    )
+    response = client.post("/copilot", json={"question": "What depends on APP001?"})
+
+    assert response.status_code == 200
+    assert "APP002" in response.json()["answer"]
+    assert "APP003" not in response.json()["answer"]
+    assert response.json()["sources"] == ["/applications"]
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Which application should run first?",
+        "Which applications should be migrated first?",
+    ],
+)
+def test_copilot_uses_live_migration_order(monkeypatch, question: str) -> None:
+    calls = _mock_copilot_core_api(
+        monkeypatch,
+        {
+            ("POST", "/migration-waves"): {
+                "waves": [{"wave": 1, "applications": ["APP010", "APP001"]}]
+            },
+        },
+    )
+    response = client.post("/copilot", json={"question": question})
+
+    assert response.status_code == 200
+    assert "APP010" in response.json()["answer"]
+    assert response.json()["sources"] == ["/migration-waves"]
+    assert calls == [("POST", "/migration-waves", {"application_ids": None})]
+
+
+def test_copilot_validates_application_id_before_live_lookup(monkeypatch) -> None:
+    calls = _mock_copilot_core_api(
+        monkeypatch,
+        {("GET", "/applications"): [{"id": "APP001", "application_id": "APP001"}]},
+    )
+    response = client.post("/copilot", json={"question": "What is the recommendation for APP9999?"})
+
+    assert response.status_code == 200
+    assert "could not find APP9999" in response.json()["answer"]
+    assert calls == [("GET", "/applications", None)]
+
+
+def test_copilot_sanitizes_live_data_failures(monkeypatch, caplog) -> None:
+    from app import copilot_service
+
+    marker = "DO_NOT_EXPOSE_CORE_RESPONSE"
+    _mock_copilot_core_api(
+        monkeypatch,
+        {
+            ("GET", "/applications"): [{"id": "APP001", "application_id": "APP001"}],
+            ("POST", "/recommendation"): copilot_service.LiveDataUnavailable(marker),
+        },
+    )
+    response = client.post("/copilot", json={"question": "What is the recommendation for APP001?"})
+
+    assert response.status_code == 200
+    assert "live application data is currently unavailable" in response.json()["answer"].lower()
+    assert marker not in response.text
+    assert marker not in caplog.text
 
 
 def test_copilot_reports_missing_hugging_face_token(monkeypatch) -> None:
@@ -119,12 +282,27 @@ def test_copilot_reports_missing_hugging_face_token(monkeypatch) -> None:
     assert "Verify HF_TOKEN" in response.json()["detail"]
 
 
-def test_copilot_rejects_placeholder_hugging_face_token(monkeypatch) -> None:
-    from copilot.llm import generate_answer
+def test_copilot_resolves_placeholder_token_from_secrets_manager(monkeypatch) -> None:
+    import boto3
+    from copilot import llm
 
+    secret_name = "test/copilot-huggingface-token"
+    fake_token = "test-only-token-not-a-credential"
+    secret_requests = []
+
+    class FakeSecretsManager:
+        def get_secret_value(self, SecretId):
+            secret_requests.append(SecretId)
+            return {"SecretString": fake_token}
+
+    monkeypatch.setattr(llm, "_HF_TOKEN", None)
     monkeypatch.setenv("HF_TOKEN", "YOUR_HUGGING_FACE_TOKEN")
-    with pytest.raises(RuntimeError, match="HF_TOKEN is not configured"):
-        generate_answer("How should waves be sequenced?", [{"text": "Evidence."}])
+    monkeypatch.setenv("HF_SECRET_NAME", secret_name)
+    monkeypatch.setenv("AWS_REGION", "ap-south-1")
+    monkeypatch.setattr(boto3, "client", lambda service, region_name: FakeSecretsManager())
+
+    assert llm._get_hf_token() == fake_token
+    assert secret_requests == [secret_name]
 
 
 def test_copilot_sanitizes_inference_errors(monkeypatch, caplog) -> None:

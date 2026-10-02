@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { apiUrl } from '../api'
+import {
+  apiUrl,
+  mapWithConcurrency,
+  RECOMMENDATION_REQUEST_CONCURRENCY,
+} from '../api'
 
 const PAGE_SIZE = 20
 
@@ -26,8 +30,10 @@ function Recommendations() {
         setApplications(apps)
 
         // Get recommendation for each application
-        const recommendationResults = await Promise.all(
-          apps.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map(async (app) => {
+        const recommendationResults = await mapWithConcurrency(
+          apps.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE),
+          RECOMMENDATION_REQUEST_CONCURRENCY,
+          async (app) => {
             const response = await fetch(
               apiUrl('/recommendation'),
               {
@@ -47,7 +53,7 @@ function Recommendations() {
             }
 
             return response.json()
-          })
+          }
         )
 
         setRecommendations(recommendationResults)

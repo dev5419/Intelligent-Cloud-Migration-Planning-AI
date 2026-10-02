@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Lightweight Copilot API on AWS Lambda.
+
+Parameters:
+  HuggingFaceTokenSecretArn:
+    Type: String
+    NoEcho: true
+    Description: ARN of a Secrets Manager secret whose value is the raw Hugging Face token.
+  CoreApiBaseUrl:
+    Type: String
+    Default: https://vjv80sckh6.execute-api.ap-south-1.amazonaws.com
+    Description: Base URL for live application migration data.
+
+Resources:
+  CopilotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build/package/
+      Handler: backend.app.copilot_main.handler
+      Runtime: python3.12
+      Architectures:
+        - x86_64
+      MemorySize: 512
+      Timeout: 90
+      Environment:
+        Variables:
+          COPILOT_RETRIEVAL_BACKEND: numpy
+          COPILOT_EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
+          COPILOT_DATA_API_BASE_URL: !Ref CoreApiBaseUrl
+          PYTHONDONTWRITEBYTECODE: "1"
+          HF_TOKEN: !Sub "{{resolve:secretsmanager:${HuggingFaceTokenSecretArn}:SecretString}}"
+      Events:
+        Copilot:
+          Type: HttpApi
+          Properties:
+            Path: /copilot
+            Method: POST
+
+Outputs:
+  CopilotApiUrl:
+    Description: HTTPS endpoint for the Copilot API.
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/copilot"

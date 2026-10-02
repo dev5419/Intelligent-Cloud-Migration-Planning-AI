@@ -1,5 +1,6 @@
 from pathlib import Path
 from functools import lru_cache
+import os
 
 import faiss
 from sentence_transformers import SentenceTransformer
@@ -29,7 +30,7 @@ def _load_resources():
     )
 
     chunks = load_chunks()
-    model = SentenceTransformer(MODEL_NAME)
+    model = SentenceTransformer(os.getenv("COPILOT_EMBEDDING_MODEL_PATH", MODEL_NAME))
     if index.ntotal == 0 or not chunks:
         raise ValueError("Copilot knowledge base is empty.")
     if index.ntotal != len(chunks):

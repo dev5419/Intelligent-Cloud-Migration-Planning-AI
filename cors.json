@@ -1,0 +1,14 @@
+{
+  "AllowOrigins": [
+    "http://intelligent-cloud-migration-ai-pranali-2026.s3-website.ap-south-1.amazonaws.com"
+  ],
+  "AllowMethods": [
+    "GET",
+    "POST",
+    "OPTIONS"
+  ],
+  "AllowHeaders": [
+    "Content-Type"
+  ],
+  "MaxAge": 300
+}

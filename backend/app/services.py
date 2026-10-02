@@ -8,7 +8,6 @@ from .models import (
     MigrationWavesResponse,
     RecommendationResponse,
 )
-from .copilot_service import answer_copilot as _answer_copilot
 from .cost_service import get_cost_risk as _get_cost_risk
 from .recommendation_service import get_recommendation as _get_recommendation
 from .wave_service import get_migration_waves as _get_migration_waves
@@ -31,6 +30,8 @@ def get_migration_waves(application_ids: list[str] | None) -> MigrationWavesResp
 
 
 def answer_copilot(question: str) -> CopilotResponse:
+    from .copilot_service import answer_copilot as _answer_copilot
+
     return _answer_copilot(question)
 
 

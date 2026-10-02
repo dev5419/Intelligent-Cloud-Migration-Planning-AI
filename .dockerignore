@@ -1,0 +1,30 @@
+.git
+**/.git
+**/.venv
+**/venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.cache
+**/*.py[cod]
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/node_modules
+*.ipynb
+notebooks/
+notebook/*.ipynb
+notebook/*.py
+data/raw/
+frontend/
+docs/
+src/
+tests/
+backend/tests/
+Wave_Planner/tests/
+Cost and Risk/test_cost.py
+Cost and Risk/cache/*

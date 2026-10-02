@@ -7,25 +7,8 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 
 from .config import settings
-from .models import (
-    Application,
-    CopilotRequest,
-    CopilotResponse,
-    CostRiskRequest,
-    CostRiskResponse,
-    MigrationWavesRequest,
-    MigrationWavesResponse,
-    RecommendationRequest,
-    RecommendationResponse,
-)
-from .services import (
-    answer_copilot,
-    get_applications,
-    get_application,
-    get_cost_risk,
-    get_migration_waves,
-    get_recommendation,
-)
+from .copilot_service import answer_copilot
+from .models import CopilotRequest, CopilotResponse
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
@@ -33,7 +16,7 @@ logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.I
 app = FastAPI(
     title="Intelligent Cloud Migration Planning API",
     version="0.2.0",
-    description="Local FastAPI integration layer for the cloud migration planning platform.",
+    description="Copilot API for the cloud migration planning platform.",
 )
 
 handler = Mangum(app)
@@ -70,42 +53,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
-@app.get("/health")
-def health_check() -> dict[str, str]:
-    return {"status": "ok"}
-
-
-@app.get("/applications", response_model=list[Application])
-def applications() -> list[Application]:
-    return get_applications()
-
-
-@app.get("/applications/{app_id}", response_model=Application)
-def application_by_id(app_id: str) -> Application:
-    try:
-        return get_application(app_id)
-    except KeyError as exc:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Application not found: {app_id}",
-        ) from exc
-
-
-@app.post("/recommendation", response_model=RecommendationResponse)
-def recommendation(request: RecommendationRequest) -> RecommendationResponse:
-    return get_recommendation(request.app_id or request.application_id)
-
-
-@app.post("/migration-waves", response_model=MigrationWavesResponse)
-def migration_waves(request: MigrationWavesRequest) -> MigrationWavesResponse:
-    return get_migration_waves(request.application_ids)
-
-
 @app.post("/copilot", response_model=CopilotResponse)
 def copilot(request: CopilotRequest) -> CopilotResponse:
     return answer_copilot(request.question)
-
-
-@app.post("/cost-risk", response_model=CostRiskResponse)
-def cost_risk(request: CostRiskRequest) -> CostRiskResponse:
-    return get_cost_risk(request.app_id or request.application_id)

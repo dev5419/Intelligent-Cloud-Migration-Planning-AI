@@ -1,0 +1,33 @@
+**
+!aws-lambda/
+!aws-lambda/core/
+!aws-lambda/core/requirements.txt
+!backend/
+!backend/app/
+!backend/app/**
+!Wave_Planner/
+!Wave_Planner/wave_planner/
+!Wave_Planner/wave_planner/**
+!Cost and Risk/
+!Cost and Risk/cost.py
+!data/
+!data/processed/
+!data/processed/application_portfolio_1000.csv
+!notebook/
+!notebook/model.joblib
+!notebook/label_encoder.joblib
+**/.env
+**/.env.*
+**/.venv
+**/venv
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/.cache
+**/*.py[cod]
+**/*.ipynb
+backend/app/tests.py
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
